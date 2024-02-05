@@ -1,49 +1,36 @@
-function doGet(url) {
-    var result = null;
 
+function httpGet(targetUrl: string, onReceive: (response: string) => void = function (response: string) { console.log("response: " + response); }) {
     Java.perform(function () {
-        var HttpParams = Java.use('org.apache.http.params.BasicHttpParams');
-        var HttpConnectionParams = Java.use('org.apache.http.params.HttpConnectionParams');
-        var HttpClient = Java.use('org.apache.http.client.HttpClient');
-        var DefaultHttpClient = Java.use('org.apache.http.impl.client.DefaultHttpClient');
-        var HttpGet = Java.use('org.apache.http.client.methods.HttpGet');
-        var Log = Java.use('android.util.Log');
+        var HttpURLConnection = Java.use("java.net.HttpURLConnection");
+        var URL = Java.use("java.net.URL");
+        var BufferedReader = Java.use("java.io.BufferedReader");
+        var InputStreamReader = Java.use("java.io.InputStreamReader");
+        var url = URL.$new(Java.use("java.lang.String").$new(targetUrl));
+        var conn = url.openConnection();
+        conn = Java.cast(conn, HttpURLConnection);
+        conn.setRequestMethod("GET");
+        conn.setRequestProperty("Content-Type", "text/plain");
 
-        try {
-            var httpParameters = HttpParams.$new();
-            // Set a timeout of 3 seconds.
-            HttpConnectionParams.setConnectionTimeout(httpParameters, 3000);
+        conn.setConnectTimeout(5000);
+        conn.setReadTimeout(5000);
+        conn.setDoInput(true);
 
-            var httpclient = DefaultHttpClient.$new(httpParameters);
-            var response = httpclient.execute(HttpGet.$new(url));
-
-            result = convertHttpResponseToString(response);
-        } catch (e) {
-            Log.e('Constants.TAG', 'Failed to establish connection.');
+        conn.connect();
+        var code = conn.getResponseCode();
+        var ret = null;
+        if (code == 200) {
+            var inputStream = conn.getInputStream();
+            var buffer = BufferedReader.$new(InputStreamReader.$new(inputStream));
+            var sb = []
+            var line = null;
+            while ((line = buffer.readLine()) != null) {
+                sb.push(line);
+            }
+            ret = sb.join("\n");
+        } else {
+            ret = "error: " + code;
         }
+        conn.disconnect();
+        onReceive(ret);
     });
-
-    return result;
 }
-
-function convertHttpResponseToString(response) {
-    var BufferedReader = Java.use('java.io.BufferedReader');
-    var InputStreamReader = Java.use('java.io.InputStreamReader');
-    var StringBuilder = Java.use('java.lang.StringBuilder');
-
-    var bufferedReader = BufferedReader.$new(InputStreamReader.$new(response.getEntity().getContent()));
-    var line;
-    var responseStringBuilder = StringBuilder.$new();
-
-    while ((line = bufferedReader.readLine()) !== null) {
-        responseStringBuilder.append(line).append('\n');
-    }
-
-    bufferedReader.close();
-    return responseStringBuilder.toString();
-}
-
-// Example of usage
-var url = 'https://url/api.json';
-var result = doGet(url);
-console.log('Request result:', result);
