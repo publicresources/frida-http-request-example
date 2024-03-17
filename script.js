@@ -1,36 +1,50 @@
 
-function httpGet(targetUrl: string, onReceive: (response: string) => void = function (response: string) { console.log("response: " + response); }) {
+function httpGet(targetUrl, onReceive) {
     Java.perform(function () {
-        var HttpURLConnection = Java.use("java.net.HttpURLConnection");
-        var URL = Java.use("java.net.URL");
-        var BufferedReader = Java.use("java.io.BufferedReader");
-        var InputStreamReader = Java.use("java.io.InputStreamReader");
-        var url = URL.$new(Java.use("java.lang.String").$new(targetUrl));
-        var conn = url.openConnection();
-        conn = Java.cast(conn, HttpURLConnection);
-        conn.setRequestMethod("GET");
-        conn.setRequestProperty("Content-Type", "text/plain");
+        const URL = Java.use("java.net.URL");
+        const HttpURLConnection = Java.use("java.net.HttpURLConnection");
+        const BufferedReader = Java.use("java.io.BufferedReader");
+        const InputStreamReader = Java.use("java.io.InputStreamReader");
+        const StringBuilder = Java.use("java.lang.StringBuilder");
 
-        conn.setConnectTimeout(5000);
-        conn.setReadTimeout(5000);
-        conn.setDoInput(true);
+        const url = URL.$new(Java.use("java.lang.String").$new(targetUrl));
+        const connection = Java.cast(url.openConnection(), HttpURLConnection);
+        connection.setRequestMethod("GET");
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setConnectTimeout(5000);
+        connection.setReadTimeout(5000);
 
-        conn.connect();
-        var code = conn.getResponseCode();
-        var ret = null;
-        if (code == 200) {
-            var inputStream = conn.getInputStream();
-            var buffer = BufferedReader.$new(InputStreamReader.$new(inputStream));
-            var sb = []
-            var line = null;
-            while ((line = buffer.readLine()) != null) {
-                sb.push(line);
+        const responseCode = connection.getResponseCode();
+        
+        let responseData = null;
+
+        if (responseCode === 200) {
+            const inputStream = connection.getInputStream();
+            const bufferedReader = BufferedReader.$new(InputStreamReader.$new(inputStream));
+            let line = null;
+            let data = []
+
+            while ((line = bufferedReader.readLine()) !== null) {
+                data.push(line)
             }
-            ret = sb.join("\n");
+
+            responseData = data.join("\n")
         } else {
-            ret = "error: " + code;
+            responseData = "error: " + responseCode;
         }
-        conn.disconnect();
-        onReceive(ret);
+
+       
+        connection.disconnect();
+        onReceive(responseData, responseCode);
     });
 }
+
+
+
+httpGet("https://example.com", function(data, code) {
+    if ( code != 200) {
+       console.log("Status bad")
+    }else{
+        console.log("Status ok, response=>",data)
+    }
+})
